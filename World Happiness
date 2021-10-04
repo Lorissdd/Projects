@@ -1,0 +1,313 @@
+import seaborn as sns
+import numpy as np
+import pandas as pd
+import streamlit as st
+import plotly.express as px
+import matplotlib.pyplot as plt
+​
+st.set_option('deprecation.showPyplotGlobalUse', False)
+​
+st.set_page_config(layout="wide")
+​
+### Titre
+st.sidebar.title("HapPyWorld Project")
+st.sidebar.text("by Pierre, Loris et Eleonora")
+​
+### Image
+st.sidebar.image('world-population.png')
+​
+​
+### afficher code
+​
+#with st.echo():   
+​
+​
+### Import et preprocessing 
+df = pd.read_csv('world-happiness-report-2021.csv')
+df2 = pd.read_csv('world-happiness-report.csv')
+​
+### création df_full
+#Création liste des régions du monde par pays
+country_region = df.iloc[:,0:2]
+​
+#Mise en forme des 2 datasets en prévision du concat
+#dataset de 2021 :
+df_1 = df.iloc[:,:12]
+df_1 = df_1.drop(df.iloc[:,3:6], axis=1)
+df_1 = df_1.drop('Regional indicator', axis=1)
+df_1['year']='2021'
+​
+#dataset historique depuis 2005 :
+df_2 = df2.iloc[:, :-2]
+dico = {'Life Ladder' : 'Ladder score', 'Log GDP per capita' : 'Logged GDP per capita', 'Healthy life expectancy at birth' : 'Healthy life expectancy'}
+df_2.rename(dico, axis=1, inplace=True)
+​
+#création du fichier contenants les données depuis 2005 :
+df_full = pd.concat([df_1, df_2], axis=0)
+df_full['year'] = df_full['year'].astype('int')
+df_full = df_full.sort_values(by='Country name', ascending=True)
+​
+#ajout colonne Region d'après le df country_region créé précédemment :
+df_full = df_full.merge(country_region, on = 'Country name', how ='inner')
+​
+#ajout du rank par année de chaque pays
+df_full["rank"] = df_full.groupby("year")["Ladder score"].rank("dense", ascending=False).astype('int')
+​
+​
+#Remplacement des NaN par les moyennes des variables en fonction de chaque pays
+for i in df_full.iloc[:,2:8].columns : 
+    df_full[i] = df_full[i].fillna(df_full.groupby('Country name')[i].transform("mean"))
+​
+#ajout colonne à country-region avec les noms de pays => Espace internes remplacés par '_'
+country_region['Country name_2'] = country_region['Country name'].str.replace(' ', '_')
+​
+#Liste des pays et regions
+#countries = country_region['Country name'].unique()
+countries = country_region['Country name'].unique()
+countries.sort()
+regions = country_region['Regional indicator'].unique()
+regions.sort()
+​
+### sidebar
+​
+st.sidebar.markdown("### Preprocessing")
+if st.sidebar.checkbox("Datasets") :
+    
+    st.markdown("### Afficher les datasets")
+    
+    if st.checkbox("Données de 2021") :
+        st.dataframe(df)
+    
+    if st.checkbox("Données antérieures") :
+        st.dataframe(df2)
+    
+    if st.checkbox("Datasets fusionnées") :
+        st.dataframe(df_full)
+        
+st.sidebar.markdown("### Data Visualisation")
+​
+if st.sidebar.checkbox('Données de 2021') :
+​
+    #remplacer les colonnes non Explained by
+    data_explained = df.drop(df.iloc[:,3:13], axis=1)
+    
+    
+    st.text('Top 10 & last 10 de 2021')
+​
+​
+    
+    st.text('Classement 2021 par région')
+    
+    
+    #Boxplots variables
+    
+   
+    st.markdown('## Dispersion des variables explicatives pour 2021')
+        
+    plt.figure(figsize=(15, 3))
+​
+    plt.boxplot([df['Explained by: Log GDP per capita'], df['Explained by: Social support'], df['Explained by: Healthy life expectancy'], df['Explained by: Freedom to make life choices'], df['Explained by: Generosity'], df['Explained by: Perceptions of corruption']], labels=['Log GDP per capita', 'Social support', 'Healthy life expectancy', 'Freedom to make life choices', 'Generosity', 'Perceptions of corruption' ])
+    plt.grid(alpha=0.5)
+    plt.title("Boxplots variables des 149 pays de l'étude pour 2021");
+    st.pyplot()
+        
+    expander_1 = st.expander(label= 'Affcicher la dispersion par Région du Monde')    
+   
+    with expander_1 :
+        plt.figure(figsize=(20,50))
+        
+        plt.subplot(8,2,1)
+        ax = sns.boxplot(x='Ladder score', y='Regional indicator', orient='h', data=data_explained, palette='Set2')
+        ax.set_yticklabels(ax.get_yticklabels(),fontsize = 15)
+        ax.set_title('Score', fontsize = 18)
+        ax.set(xlabel = None, ylabel = None)
+        
+        plt.subplot(8,2,2)
+        ax = sns.boxplot(x='Explained by: Log GDP per capita', y='Regional indicator', data=data_explained, orient='h', palette='Set2')
+        ax.set(yticklabels = [])
+        ax.set(xlabel = None, ylabel = None)
+        ax.set_title('Log GDP per capita', fontsize = 18)
+        
+        plt.subplot(8,2,3)
+        ax = sns.boxplot(x='Explained by: Social support', y='Regional indicator', data=data_explained, orient='h', palette='Set2')
+        ax.set_yticklabels(ax.get_yticklabels(),fontsize = 15)
+        ax.set(xlabel = None, ylabel = None)
+        ax.set_title('Social Support', fontsize = 18)
+        
+        plt.subplot(8,2,4)
+        ax = sns.boxplot(x='Explained by: Healthy life expectancy', y='Regional indicator', data=data_explained, orient='h', palette='Set2')
+        ax.set(yticklabels = [])
+        ax.set(xlabel = None, ylabel = None)
+        ax.set_title('Healthy life expectancy', fontsize = 18)
+        
+        plt.subplot(8,2,5)
+        ax = sns.boxplot(x='Explained by: Freedom to make life choices', y='Regional indicator', data=data_explained, orient='h', palette='Set2')
+        ax.set_yticklabels(ax.get_yticklabels(),fontsize = 15)
+        ax.set(xlabel = None, ylabel = None)
+        ax.set_title('Freedom to make life choices', fontsize = 18)
+        
+        plt.subplot(8,2,6)
+        ax = sns.boxplot(x='Explained by: Generosity', y='Regional indicator', data=data_explained, orient='h', palette='Set2')
+        ax.set(yticklabels = [])
+        ax.set(xlabel = None, ylabel = None)
+        ax.set_title('Generosity', fontsize = 18)
+        
+        plt.subplot(8,2,7)
+        ax = sns.boxplot(x='Explained by: Perceptions of corruption', y='Regional indicator', data=data_explained, orient='h', palette='Set2')
+        ax.set_yticklabels(ax.get_yticklabels(),fontsize = 15)
+        ax.set(xlabel = None, ylabel = None)
+        ax.set_title('Perceptions of corruption', fontsize = 18)
+        
+        plt.subplot(8,2,8)
+        ax = sns.boxplot(x='Dystopia + residual', y='Regional indicator', data=data_explained, orient='h', palette='Set2')
+        ax.set(yticklabels = [])
+        ax.set(xlabel = None, ylabel = None)
+        ax.set_title('Dystopia + residual', fontsize = 18);
+        
+        st.pyplot()
+​
+    st.text('Corrélation des variables')
+    
+    #Heatmap corrélation variables
+​
+    corr_data_exp= data_explained.corr()
+​
+    matrix = np.triu(corr_data_exp)
+    plt.figure(figsize=(10, 5))
+    sns.heatmap(corr_data_exp, annot=True, cmap='winter', center = 0, mask=matrix);
+    st.pyplot()
+    
+    expander_2 = st.expander(label= 'Afficher la corrélation par Région du Monde')    
+   
+    with expander_2 :
+        
+        data_corr =pd.DataFrame(df[['Regional indicator','Logged GDP per capita', 'Social support', 'Healthy life expectancy',
+           'Freedom to make life choices', 'Generosity',
+           'Perceptions of corruption','Dystopia + residual']])
+    
+    
+        corr_data_exp= data_corr.corr()
+    
+        plt.subplots(figsize=(20, 50))
+    
+        j=1
+    
+        for i in range(len(data_corr["Regional indicator"].unique())):
+      
+            region = data_corr["Regional indicator"].unique()[i]
+      
+            data_map = data_corr[data_corr["Regional indicator"] == region]
+        
+            matrix = np.triu(corr_data_exp)
+            corr_data_exp= data_map.corr()
+            plt.subplot(5,2,j)
+            sns.heatmap(corr_data_exp, annot=True, cmap='winter', mask=matrix)
+            plt.subplots_adjust(hspace=0.7)
+            plt.title(region, position=(0.5, -10),fontdict={'family': 'serif', 'color' : 'darkred','weight': 'bold','size': 16});
+            j +=1
+            if j== 4:
+              j==1
+          
+        st.pyplot()
+    
+    st.text('Proportion / poids des régions')
+    
+    
+    
+ 
+if st.sidebar.checkbox('Données cumulées de 2005 à 2021') :          
+    
+    st.text('Top 10 de 2005 à 2021')
+    
+    st.text('Evolution du ladder score et des variables explicatives du top 5')
+    
+       
+    
+st.sidebar.markdown("### Focus")
+### carte du monde
+if st.sidebar.checkbox("Monde") :
+​
+    st.markdown("## Evolution du Happiness Score au fil des ans")
+    df_full_by_year = df_full.sort_values('year')
+​
+    fig = px.choropleth(df_full_by_year, locations = 'Country name', locationmode = 'country names' ,color = 'Ladder score', projection = 'equirectangular', scope = "world",
+                    animation_frame = "year", hover_data=['rank'], hover_name='Country name',range_color=(0, 8))
+    fig.update_layout(title = 'Score "bonheur" dans le monde', margin=dict(l=10, r=10, t=30, b=10))
+​
+    st.plotly_chart(fig, use_container_width=True)
+    
+    
+    
+if st.sidebar.checkbox("Régions du monde") :
+    
+    col_region, col_annee = st.columns(2)
+    
+    #choix pays
+    with col_region :
+        
+        Region = st.selectbox('Région', regions)
+        
+    
+    # choix année
+    with col_annee :
+        min_ts = min(df_full['year'])
+        max_ts = max(df_full['year'])
+        year_sel = st.slider("Année", min_value=min_ts, max_value=max_ts, value=max_ts)
+    
+    #création DataSet avec données du pays et année sélectionnés
+    df_full_filter = df_full[(df_full['year'] == year_sel) & (df_full['Regional indicator'] == Region)]
+​
+        
+    #set colonnes
+    col1, col2 = st.columns(2)
+​
+    col1.header("Données")
+    
+    with col1: 
+        df_full_filter.loc[:,['Country name', 'Ladder score', 'rank']]
+        
+        
+    with col2 : 
+        #carte monde
+​
+        fig = px.choropleth(df_full_filter, locations = 'Country name', locationmode = 'country names' ,color = 'Ladder score', projection = 'natural earth', scope = "world", hover_data=['rank', 'year'], hover_name='Country name',range_color=(0, 8))
+    
+        fig.update_geos(fitbounds="locations")
+        fig.update_layout(title = Region, margin=dict(l=10, r=10, t=30, b=10))
+        st.plotly_chart(fig)
+        scatter = fig.data[0]
+        
+                
+    with col1:    
+        Pays = st.selectbox('Pays', df_full_filter['Country name'])
+        #df_full_filter_country = df_full_filter[(df_full_filter['year'] == year_sel) & (df_full_filter['Country name'] == Pays)]
+        #df_full_filter_country = df_full_filter_country.drop(df_full_filter_country.columns[0], axis=1)
+        
+    df_full_country = df_full[df_full['Country name'] == Pays]
+    df_full_country = df_full_country.sort_values(by='year')
+    df_full_country = df_full_country.drop(df_full_country.loc[:,['Country name', 'Regional indicator']], axis=1)     
+    df_full_country.set_index('year', inplace=True)
+    
+    st.write(df_full_country.transpose())
+​
+​
+st.sidebar.markdown("### Modelisation")
+​
+​
+​
+Réduire
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
